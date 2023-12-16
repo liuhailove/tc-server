@@ -1,8 +1,20 @@
 package buffer
 
 import (
-	"github.com/pion/rtp"
+	"github.com/gammazero/deque"
+	"sync"
 	"time"
+
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
+	"github.com/pion/webrtc/v3"
+	"go.uber.org/atomic"
+
+	"github.com/liuhailove/tc-base-go/mediatransportutil/pkg/bucket"
+	"github.com/liuhailove/tc-base-go/mediatransportutil/pkg/nack"
+	"github.com/liuhailove/tc-base-go/mediatransportutil/pkg/twcc"
+	"github.com/liuhailove/tc-base-go/protocol/logger"
+	sutils "github.com/liuhailove/tc-server/pkg/utils"
 )
 
 // 同步信源(SSRC)标识符：占32位，用于标识同步信源。该标识符是随机选择的，参加同一视频会议的两个同步信源不能有相同的SSRC。
@@ -25,11 +37,93 @@ type pendingPacket struct {
 
 // ExtPacket 扩展包
 type ExtPacket struct {
-	VideoLayer                                  // 视频编码层
-	Arrival              time.Time              // 到达时间
-	Packet               *rtp.Packet            // rtp包
-	Payload              interface{}            // 负载
-	KeyFrame             bool                   // 是否为关键帧
-	RawPacket            []byte                 // 原始包
-	DependencyDescriptor *ExtDenpencyDescriptor // 依赖
+	VideoLayer                                    // 视频编码层
+	Arrival              time.Time                // 到达时间
+	Packet               *rtp.Packet              // rtp包
+	Payload              interface{}              // 负载
+	KeyFrame             bool                     // 是否为关键帧
+	RawPacket            []byte                   // 原始包
+	DependencyDescriptor *ExtDependencyDescriptor // 依赖
+}
+
+// Buffer 包含所有数据包
+type Buffer struct {
+	sync.RWMutex
+	bucket        *bucket.Bucket
+	nacker        *nack.NackQueue
+	videoPool     *sync.Pool
+	audioPool     *sync.Pool
+	codecType     webrtc.RTPCodecType
+	extPackets    deque.Deque[*ExtPacket]
+	pPackets      []pendingPacket
+	closeOnce     sync.Once
+	mediaSSRC     uint32
+	clockRate     uint32
+	lastReport    time.Time
+	twccExt       uint8
+	audioLevelExt uint8
+	bound         bool
+	closed        atomic.Bool
+	mime          string
+
+	// supported feedbacks
+	latestTSForAudioLevelInitialized bool
+	latestTSForAudioLevel            uint32
+
+	twcc             *twcc.Responder
+	audioLevelParams audio.AudioLevelParams
+	audioLevel       *audio.AudioLevel
+
+	lastPacketRead int
+
+	pliThrottle int64
+
+	rtpStats             *RTPStats
+	rrSnapshotId         uint32
+	deltaStatsSnapshotId uint32
+
+	lastFractionLostToReport uint8 // 订阅者丢失的最后一部分，应向发布者报告；仅限音频
+
+	// 回调
+	onClose            func()
+	onRtcpFeedback     func([]rtcp.Packet)
+	onRtcpSenderReport func()
+	onFpsChanged       func()
+	onFinalRtpStats    func(*RTPStats)
+
+	// logger
+	logger logger.Logger
+
+	// 依赖描述符
+	ddExt    uint8
+	ddParser *DependencyDescriptorParser
+
+	paused              bool
+	frameRateCalculator [DefaultMaxLayerSpatial + 1]FrameRateCalculator
+	frameRateCalculated bool
+}
+
+// NewBuffer 构建一个新的Buffer
+func NewBuffer(ssrc uint32, vp, ap *sync.Pool) *Buffer {
+	// 将通过 SetLogger 重置正确的上下文
+	l := logger.GetLogger()
+	b := &Buffer{
+		mediaSSRC:   ssrc,
+		videoPool:   vp,
+		audioPool:   ap,
+		pliThrottle: int64(500 * time.Millisecond),
+		logger:      l.WithComponent(sutils.ComponentPub).WithComponent(sutils.ComponentSFU),
+	}
+	b.extPackets.SetMinCapacity(7)
+	return b
+}
+
+func (b *Buffer) SetLogger(logger logger.Logger) {
+	b.Lock()
+	defer b.Unlock()
+
+	b.logger = logger.WithComponent(sutils.ComponentSFU)
+	if b.rtpStats != nil {
+		b.rtpStats.SetLogger(b.logger)
+	}
 }
