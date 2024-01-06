@@ -2,7 +2,6 @@ package buffer
 
 import (
 	"github.com/gammazero/deque"
-	"github.com/liuhailove/tc-server/pkg/sfu/audio"
 	"sync"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/liuhailove/tc-base-go/mediatransportutil/pkg/nack"
 	"github.com/liuhailove/tc-base-go/mediatransportutil/pkg/twcc"
 	"github.com/liuhailove/tc-base-go/protocol/logger"
+	"github.com/liuhailove/tc-server/pkg/sfu/audio"
 	sutils "github.com/liuhailove/tc-server/pkg/utils"
 )
 

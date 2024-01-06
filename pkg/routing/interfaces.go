@@ -3,11 +3,12 @@ package routing
 import (
 	"context"
 	"encoding/json"
-	"github.com/liuhailove/tc-base-go/protocol/logger"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/redis/go-redis/v9"
+	"google.golang.org/protobuf/proto"
 
+	"github.com/liuhailove/tc-base-go/protocol/auth"
+	"github.com/liuhailove/tc-base-go/protocol/logger"
 	"github.com/liuhailove/tc-base-go/protocol/tc"
 )
 

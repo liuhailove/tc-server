@@ -6,8 +6,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/golang/protobuf/proto"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/liuhailove/tc-base-go/protocol/logger"
 	"github.com/liuhailove/tc-base-go/protocol/tc"

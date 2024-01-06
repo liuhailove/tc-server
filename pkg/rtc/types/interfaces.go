@@ -2,8 +2,7 @@ package types
 
 import (
 	"fmt"
-	"github.com/liuhailove/tc-server/pkg/routing"
-	"github.com/liuhailove/tc-server/pkg/sfu/pacer"
+	"github.com/liuhailove/tc-base-go/protocol/auth"
 	"github.com/pion/rtcp"
 	"time"
 
@@ -12,6 +11,9 @@ import (
 	"github.com/liuhailove/tc-base-go/protocol/logger"
 	"github.com/liuhailove/tc-base-go/protocol/tc"
 	"github.com/liuhailove/tc-base-go/protocol/utils"
+	"github.com/liuhailove/tc-server/pkg/routing"
+	"github.com/liuhailove/tc-server/pkg/sfu/buffer"
+	"github.com/liuhailove/tc-server/pkg/sfu/pacer"
 )
 
 // WebsocketClient websocket客户端
@@ -318,7 +320,7 @@ type LocalParticipant interface {
 	GetClientInfo() *tc.ClientInfo
 	// GetClientConfiguration 获取客户端配置信息
 	GetClientConfiguration() *tc.ClientConfiguration
-	// GetICEConnectionType 获取ICE连接蕾西
+	// GetICEConnectionType 获取ICE连接类型
 	GetICEConnectionType() ICEConnectionType
 	GetBufferFactory() *buffer.Factory
 	// GetPlayoutDelayConfig 获取播放延迟配置
